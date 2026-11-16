@@ -1,0 +1,44 @@
+
+# AWS credentials and environment variables
+.env
+.env.*
+!.env.example
+
+# AWS IoT certificates and private keys
+certs/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# AWS local configuration
+.aws/
+credentials
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.log
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Node.js dependencies
+node_modules/
+dist/
+build/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
