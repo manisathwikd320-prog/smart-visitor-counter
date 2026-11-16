@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Visitor Counter | Live Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-dark: #080c14;
+      --bg-card: rgba(15, 23, 42, 0.72);
+      --bg-card-border: rgba(255, 255, 255, 0.09);
+      --accent-cyan: #38bdf8;
+      --accent-blue: #6366f1;
+      --accent-emerald: #10b981;
+      --accent-glow: rgba(56, 189, 248, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 50% 15%, rgba(56, 189, 248, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 15% 85%, rgba(16, 185, 129, 0.08) 0%, transparent 35%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Subtle background grid pattern */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Ambient glow orb behind card */
+    .glow-orb {
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%);
+      filter: blur(50px);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      animation: floatAura 10s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatAura {
+      0% { transform: scale(0.95) translateY(-10px); opacity: 0.8; }
+      100% { transform: scale(1.1) translateY(15px); opacity: 1; }
+    }
+
+    /* Main Container */
+    .dashboard-wrapper {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Glass Card */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 28px;
+      padding: 36px 32px 32px;
+      box-shadow: 
+        0 20px 45px -10px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(56, 189, 248, 0.25);
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.7),
+        0 0 25px -5px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Polling progress line */
+    .progress-bar-track {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+      box-shadow: 0 0 8px var(--accent-cyan);
+      transition: width 0.1s linear;
+    }
+
+    /* Header Bar */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(99, 102, 241, 0.15));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+    }
+
+    .brand-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-text p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* Live Badge */
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      padding: 6px 13px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-emerald);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+      user-select: none;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-emerald);
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .pulse-dot::before {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      opacity: 0.75;
+      animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes ping {
+      75%, 100% {
+        transform: scale(2.2);
+        opacity: 0;
+      }
+    }
+
+    /* Counter Display Section */
+    .counter-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px 0 32px;
+      position: relative;
+    }
+
+    .counter-label {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .counter-label span {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+    }
+
+    /* Large Number with Subtle Glow */
+    .counter-number-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: center;
+    }
+
+    .counter-number {
+      font-size: clamp(5.2rem, 16vw, 7.8rem);
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+      letter-spacing: -0.04em;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      
+      /* Glowing Gradient text */
+      background: linear-gradient(135deg, #ffffff 40%, #bae6fd 75%, #38bdf8 100%);
+      -webkit-background-clip: text;
+       background-clip: text; 
+      -webkit-text-fill-color: transparent;
+      
+      /* Drop-shadow glow that works with text clip */
+      filter: drop-shadow(0 0 24px rgba(56, 189, 248, 0.45))
+              drop-shadow(0 0 55px rgba(99, 102, 241, 0.25));
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+      user-select: none;
+    }
+
+    /* Flash pulse when number updates */
+    .counter-number.updated {
+      transform: scale(1.04);
+      filter: drop-shadow(0 0 35px rgba(56, 189, 248, 0.8))
+              drop-shadow(0 0 70px rgba(99, 102, 241, 0.5));
+    }
+
+    .counter-unit {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      font-weight: 500;
+      margin-top: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    /* Footer Metadata Stats */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .meta-box {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .meta-box:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .meta-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-value.mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .status-indicator-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      display: inline-block;
+    }
+
+    .status-indicator-dot.error {
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+    }
+
+    .status-indicator-dot.syncing {
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    /* Bottom Info & Endpoint bar */
+    .endpoint-card {
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 18px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .endpoint-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .endpoint-badge {
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .endpoint-url {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .refresh-badge {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    /* Toast Notification for errors */
+    .status-message {
+      display: none;
+      margin-top: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      text-align: center;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+    }
+
+    .status-message.visible {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 28px 20px 24px;
+      }
+      .header {
+        margin-bottom: 20px;
+      }
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient background glow orb -->
+  <div class="glow-orb"></div>
+
+  <div class="dashboard-wrapper">
+    <!-- Main Card -->
+    <div class="card">
+      <!-- 3-Second Poll Progress Bar -->
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="pollProgress"></div>
+      </div>
+
+      <!-- Header Section -->
+      <div class="header">
+        <div class="brand">
+          <div class="brand-icon">
+            <!-- Footprint / Visitors SVG Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>Smart Visitor Counter</h1>
+            <p>Real-Time Foot Traffic Telemetry</p>
+          </div>
+        </div>
+
+        <!-- Live Status Pill -->
+        <div class="live-badge" id="liveBadge" title="Live stream active">
+          <div class="pulse-dot"></div>
+          <span>LIVE</span>
+        </div>
+      </div>
+
+      <!-- Counter Display -->
+      <div class="counter-display">
+        <div class="counter-label">
+          <span></span> Current Count <span></span>
+        </div>
+        
+        <div class="counter-number-wrapper">
+          <div class="counter-number" id="visitorCount">--</div>
+        </div>
+
+        <div class="counter-unit">total visitors registered</div>
+      </div>
+
+      <!-- Secondary Metadata Status Boxes -->
+      <div class="meta-grid">
+        <div class="meta-box">
+          <span class="meta-title">Status</span>
+          <div class="meta-value">
+            <span class="status-indicator-dot" id="statusDot"></span>
+            <span id="statusText">Connecting...</span>
+          </div>
+        </div>
+
+        <div class="meta-box">
+          <span class="meta-title">Last Synced</span>
+          <div class="meta-value mono" id="lastUpdatedTime">--:--:--</div>
+        </div>
+      </div>
+
+      <!-- Status error message if offline -->
+      <div class="status-message" id="errorMessage"></div>
+    </div>
+
+    <!-- API Endpoint Card -->
+    <div class="endpoint-card">
+      <div class="endpoint-info">
+        <span class="endpoint-badge">GET</span>
+        <span class="endpoint-url" title="https://sxbpx5mo4d3lp733hu2srh43du0uqpfi.lambda-url.ap-southeast-2.on.aws/">
+          .../count
+        </span>
+      </div>
+      <div class="refresh-badge">Sync: 3s</div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_ENDPOINT = 'https://zp7nks2eg76xidwwmtl6nr6rha0tnkjt.lambda-url.ap-southeast-2.on.aws/';
+    const POLL_INTERVAL_MS = 3000;
+
+    // DOM Elements
+    const countEl = document.getElementById('visitorCount');
+    const statusDotEl = document.getElementById('statusDot');
+    const statusTextEl = document.getElementById('statusText');
+    const lastUpdatedEl = document.getElementById('lastUpdatedTime');
+    const progressBarEl = document.getElementById('pollProgress');
+    const errorMessageEl = document.getElementById('errorMessage');
+
+    let currentCount = null;
+    let pollStartTime = Date.now();
+    let isFetching = false;
+
+    /**
+     * Resiliently parse the visitor count from diverse API response schemas:
+     * - Pure number: 42
+     * - String number: "42"
+     * - Object: { count: 42 }, { visitor_count: 42 }, { total: 42 }
+     * - Lambda Proxy: { statusCode: 200, body: "{\"count\": 42}" }
+     * - DynamoDB format: { count: { N: "42" } }
+     */
+    function parseCountResponse(data) {
+      if (data === null || data === undefined) return null;
+
+      // Direct integer or float
+      if (typeof data === 'number') {
+        return Math.floor(data);
+      }
+
+      // String handling
+      if (typeof data === 'string') {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed !== data) {
+            return parseCountResponse(parsed);
+          }
+        } catch {
+          const parsedInt = parseInt(data.trim(), 10);
+          return isNaN(parsedInt) ? null : parsedInt;
+        }
+      }
+
+      // Object handling
+      if (typeof data === 'object') {
+        // Lambda proxy wrapper check
+        if (data.body !== undefined) {
+          return parseCountResponse(data.body);
+        }
+
+        // Common API field keys
+        const candidateKeys = [
+          'count',
+          'current_count',
+          'visitor_count',
+          'visitors',
+          'total',
+          'total_count',
+          'value',
+          'counter'
+        ];
+
+        for (const key of candidateKeys) {
+          if (key in data && data[key] !== null && data[key] !== undefined) {
+            return parseCountResponse(data[key]);
+          }
+        }
+
+        // DynamoDB AttributeValue format: { N: "42" }
+        if (data.N !== undefined) {
+          const n = parseInt(data.N, 10);
+          return isNaN(n) ? null : n;
+        }
+
+        // Fallback: search for first numeric value in the object
+        for (const val of Object.values(data)) {
+          if (typeof val === 'number') return Math.floor(val);
+          if (typeof val === 'string' && !isNaN(parseInt(val, 10))) {
+            return parseInt(val, 10);
+          }
+        }
+      }
+
+      return null;
+    }
+
+    /**
+     * Animate count number with formatting and subtle pulse
+     */
+    function updateDisplayCount(newCount) {
+      const formatted = Number(newCount).toLocaleString();
+      
+      if (currentCount !== newCount) {
+        countEl.textContent = formatted;
+        
+        // Trigger subtle glowing pulse animation
+        countEl.classList.remove('updated');
+        // Force reflow
+        void countEl.offsetWidth;
+        countEl.classList.add('updated');
+
+        setTimeout(() => {
+          countEl.classList.remove('updated');
+        }, 500);
+
+        currentCount = newCount;
+      }
+    }
+
+    /**
+     * Fetch count data from AWS API Gateway endpoint
+     */
+    async function fetchVisitorCount() {
+      if (isFetching) return;
+      isFetching = true;
+
+      try {
+        statusDotEl.className = 'status-indicator-dot syncing';
+        statusTextEl.textContent = 'Syncing...';
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+        const response = await fetch(API_ENDPOINT, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          cache: 'no-cache',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
+
+        // Parse JSON or text
+        let resultData;
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          resultData = await response.json();
+        } else {
+          const rawText = await response.text();
+          try {
+            resultData = JSON.parse(rawText);
+          } catch {
+            resultData = rawText;
+          }
+        }
+
+        const count = parseCountResponse(resultData);
+
+        if (count !== null) {
+          updateDisplayCount(count);
+          statusDotEl.className = 'status-indicator-dot';
+          statusTextEl.textContent = 'Live & Healthy';
+          errorMessageEl.classList.remove('visible');
+        } else {
+          throw new Error('Received unexpected data format');
+        }
+
+        // Update timestamp
+        const now = new Date();
+        lastUpdatedEl.textContent = now.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+      } catch (err) {
+        console.warn('[Visitor Counter] Fetch notice:', err.message);
+        statusDotEl.className = 'status-indicator-dot error';
+        statusTextEl.textContent = 'Sync retry';
+        
+        // Show non-intrusive error hint only if count is still null
+        if (currentCount === null) {
+          countEl.textContent = '0';
+          errorMessageEl.textContent = `Waiting for API (${err.message}). Retrying every 3s...`;
+          errorMessageEl.classList.add('visible');
+        }
+      } finally {
+        isFetching = false;
+        pollStartTime = Date.now();
+      }
+    }
+
+    /**
+     * Smooth progress bar indicating the 3-second polling interval
+     */
+    function updateProgressBar() {
+      const elapsed = Date.now() - pollStartTime;
+      const progress = Math.min((elapsed / POLL_INTERVAL_MS) * 100, 100);
+      progressBarEl.style.width = `${progress}%`;
+      requestAnimationFrame(updateProgressBar);
+    }
+
+    // Start progress bar animation
+    requestAnimationFrame(updateProgressBar);
+
+    // Initial fetch immediately on load
+    fetchVisitorCount();
+
+    // Set recurring timer every 3 seconds (3000 ms)
+    setInterval(fetchVisitorCount, POLL_INTERVAL_MS);
+  </script>
+</body>
+</html>
